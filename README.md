@@ -52,10 +52,60 @@ For deep architecture and flow details, see **[docs/ARCHITECTURE.md](docs/ARCHIT
 
 ---
 
+## Setting Up the Pi Without a Monitor (Headless)
+
+You don't need a monitor, keyboard or mouse. You set up Wi-Fi and SSH while writing the SD card, then control the Pi from your computer over the network.
+
+### 1. Flash the SD card with Raspberry Pi Imager
+Install [Raspberry Pi Imager](https://www.raspberrypi.com/software/) on your computer, then:
+1. **Device:** choose your Pi model.
+2. **OS:** *Raspberry Pi OS (other)* → **Raspberry Pi OS Lite (64-bit)**. piBot needs the 64-bit OS, and Lite (no desktop) leaves more RAM for the bot.
+3. Click **Next → Edit Settings**:
+   - **Hostname:** `pibot` (this is the name you'll connect to).
+   - **Username and password:** choose your own (avoid the old default `pi`).
+   - **Wireless LAN:** your Wi-Fi name, password and country. Skip this if you'll use an Ethernet cable. The Pi 3 only supports 2.4 GHz Wi-Fi.
+   - **Services tab:** tick **Enable SSH** (password authentication is fine; a public key is better).
+4. Write the card, put it in the Pi, and power it on. Give the first boot about 2 minutes.
+
+> **Tip:** for the first boot, plugging the Pi into your router with an Ethernet cable avoids the most common headless problem: a mistyped Wi-Fi password.
+
+### 2. Find the Pi on your network
+From a terminal on your computer (PowerShell on Windows, Terminal on macOS/Linux):
+```bash
+ping pibot.local
+```
+Replies mean the Pi is up and reachable (on Windows `ping` stops by itself; on macOS/Linux press **Ctrl+C**). If you chose a different hostname, use `<hostname>.local`.
+
+If `pibot.local` is not found, look up the Pi's IP address instead:
+- **Your router's admin page:** the "connected devices" / DHCP client list shows a device named `pibot`.
+- **ARP table:** run `arp -a` and look for a Raspberry Pi hardware address, which starts with `b8-27-eb` (Pi 3) or `dc-a6-32`, `e4-5f-01`, `d8-3a-dd`, `2c-cf-67` (newer models).
+- **Network scan:** `nmap -sn 192.168.1.0/24` (adjust to your network's address range).
+
+Then use the IP address in place of `pibot.local` below.
+
+### 3. Connect with SSH
+```bash
+ssh <your-username>@pibot.local
+```
+- The first time, type `yes` to trust the Pi's fingerprint, then enter the password you set in Imager.
+- If you ever re-flash the card, SSH will warn that the "remote host identification has changed". That's expected; clear the old entry with `ssh-keygen -R pibot.local` and connect again.
+- To avoid the IP changing later, reserve it for the Pi in your router (a "DHCP reservation").
+
+### 4. Check the basics
+Once you're logged in to the Pi:
+```bash
+sudo apt update && sudo apt full-upgrade -y
+uname -m     # must print aarch64 (64-bit). armv7l means the 32-bit OS was flashed
+free -h      # the Swap line should show about 900 MB or more (see docs/HARDWARE.md)
+```
+Everything in the Quickstart below is run on the Pi in this SSH session.
+
+---
+
 ## Quickstart Guide
 
 ### 1. Clone the Repository
-Minimal images (e.g. Raspberry Pi OS Lite, Debian) may not include `git` yet:
+Run these on the Pi (over SSH if it's headless, see above). Minimal images (e.g. Raspberry Pi OS Lite, Debian) may not include `git` yet:
 ```bash
 sudo apt-get update && sudo apt-get install -y git
 git clone https://github.com/<your-username>/piBot.git
