@@ -21,15 +21,20 @@ Preserve original user files whenever practical.
 
 This Raspberry Pi is a dedicated appliance.
 
-The appliance user has passwordless sudo and may:
+Within the permissions the owner has granted the appliance user, you may:
 
-- Install or remove packages
-- Configure services
-- Modify system configuration
 - Create scripts
 - Run shell commands
-- Restart services
+- Manage files in the workspace
+
+If (and only if) the owner has given the appliance user sudo rights, you may also:
+
+- Install or remove packages
+- Configure and restart services
+- Modify system configuration
 - Reboot the Pi when necessary
+
+Never try to obtain privileges you have not been given.
 
 Do not use this authority to access unrelated devices or systems.
 

@@ -40,76 +40,42 @@ fi
 AGENT_NAME="${AGENT_NAME:-pibot}"
 AGENT_WORKSPACE="${HOME}/.zeroclaw/agents/${AGENT_NAME}/workspace"
 CONFIG_FILE="${HOME}/.zeroclaw/config.toml"
-SEED_WORKSPACE="/etc/pibot/workspace"
+SEED_AGENT="/etc/pibot/agent"
 SEED_TEMPLATE="/etc/pibot/config.toml.template"
+TOKEN_FILE="${HOME}/.zeroclaw/agy-shim.token"
 
 mkdir -p "${AGENT_WORKSPACE}"
 mkdir -p "${HOME}/workspaces"
 
-# Seed agent persona prompt files if not already present in the mounted volume
+# Seed agent persona prompt files if not already present in the mounted volume.
+# Personal overrides from agent/local/ (git-ignored) win over the defaults.
 if [ ! -f "${AGENT_WORKSPACE}/AGENTS.md" ]; then
-  if [ -d "${SEED_WORKSPACE}" ]; then
-    echo "[piBot] Seeding agent workspace persona files into ${AGENT_WORKSPACE}..."
-    cp -r "${SEED_WORKSPACE}"/* "${AGENT_WORKSPACE}/"
+  echo "[piBot] Seeding agent workspace persona files into ${AGENT_WORKSPACE}..."
+  cp "${SEED_AGENT}"/workspace/*.md "${AGENT_WORKSPACE}/"
+  if compgen -G "${SEED_AGENT}/local/*.md" > /dev/null; then
+    cp "${SEED_AGENT}"/local/*.md "${AGENT_WORKSPACE}/"
   fi
 fi
 
-# Render configuration if config.toml is missing and secrets are provided
-if [ ! -f "${CONFIG_FILE}" ]; then
-  if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_ALLOWED_USERS:-}" ]; then
-    if [ ! -f "${SEED_TEMPLATE}" ]; then
-      echo "[-] Error: Configuration template not found at ${SEED_TEMPLATE}." >&2
-      exit 1
-    fi
+# Shared secret between ZeroClaw and agy-shim, persisted in the ~/.zeroclaw volume
+if [ ! -s "${TOKEN_FILE}" ]; then
+  (umask 077 && python3 -c 'import secrets; print(secrets.token_hex(32))' > "${TOKEN_FILE}")
+fi
+AGY_SHIM_TOKEN="$(cat "${TOKEN_FILE}")"
+AGY_SHIM_PORT=8088
+export AGY_SHIM_TOKEN AGY_SHIM_PORT
 
-    echo "[piBot] Rendering ${CONFIG_FILE} from ${SEED_TEMPLATE}..."
-    export RENDER_TEMPLATE_FILE="${SEED_TEMPLATE}"
-    export RENDER_TARGET_FILE="${CONFIG_FILE}"
-    export RENDER_BOT_TOKEN="${TELEGRAM_BOT_TOKEN}"
-    export RENDER_ALLOWED_USERS="${TELEGRAM_ALLOWED_USERS}"
-    export RENDER_WORKSPACE_ROOT="${HOME}/workspaces"
-
-    python3 - << 'EOF'
-import json
-import os
-import sys
-
-template_path = os.environ["RENDER_TEMPLATE_FILE"]
-target_path = os.environ["RENDER_TARGET_FILE"]
-bot_token = os.environ["RENDER_BOT_TOKEN"].strip()
-raw_users = os.environ["RENDER_ALLOWED_USERS"]
-workspace_root = os.environ["RENDER_WORKSPACE_ROOT"].strip()
-
-# Validate user IDs
-user_tokens = [u.strip() for u in raw_users.split(",") if u.strip()]
-if not user_tokens:
-    sys.stderr.write("[-] Error: No valid user IDs found in TELEGRAM_ALLOWED_USERS.\n")
-    sys.exit(1)
-
-for uid in user_tokens:
-    if not uid.isdigit():
-        sys.stderr.write(f"[-] Error: Invalid Telegram user ID '{uid}'. Telegram user IDs must be numeric digits.\n")
-        sys.exit(1)
-
-with open(template_path, "r", encoding="utf-8") as f:
-    content = f.read()
-
-content = content.replace('"__TELEGRAM_BOT_TOKEN__"', json.dumps(bot_token))
-content = content.replace('"__TELEGRAM_USER_ID__"', json.dumps(user_tokens)[1:-1])
-content = content.replace('"__WORKSPACE_ROOT__"', json.dumps(workspace_root))
-
-with open(target_path, "w", encoding="utf-8") as f:
-    f.write(content)
-EOF
-
-    chmod 600 "${CONFIG_FILE}"
-    echo "[piBot] Configuration successfully generated with mode 0600."
-  else
-    echo "[-] Error: ${CONFIG_FILE} not found." >&2
-    echo "    Either mount an existing config.toml into ~/.zeroclaw/ or provide" >&2
-    echo "    TELEGRAM_BOT_TOKEN and TELEGRAM_ALLOWED_USERS environment variables." >&2
-    exit 1
-  fi
+# Render configuration from the environment on every start, so it always
+# matches the current .env and shim token. Without the Telegram variables,
+# fall back to a config.toml you mounted yourself.
+if [ -n "${TELEGRAM_BOT_TOKEN:-}" ] && [ -n "${TELEGRAM_ALLOWED_USERS:-}" ]; then
+  ENV_FILE=/nonexistent TEMPLATE_FILE="${SEED_TEMPLATE}" WORKSPACE_ROOT="${HOME}/workspaces" \
+    pibot-render-config "${CONFIG_FILE}"
+elif [ ! -f "${CONFIG_FILE}" ]; then
+  echo "[-] Error: ${CONFIG_FILE} not found." >&2
+  echo "    Either mount an existing config.toml into ~/.zeroclaw/ or provide" >&2
+  echo "    TELEGRAM_BOT_TOKEN and TELEGRAM_ALLOWED_USERS environment variables." >&2
+  exit 1
 fi
 
 # ------------------------------------------------------------------------------

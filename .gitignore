@@ -11,6 +11,10 @@ data/
 brain.db
 *.session
 
+# Bot output (Docker default workspace mount) and your personal persona overrides
+workspaces/
+agent/local/
+
 # Compiled binaries and build artifacts
 agy-shim/agy-shim
 bin/

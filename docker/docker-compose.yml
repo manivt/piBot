@@ -1,5 +1,6 @@
-version: '3.8'
-
+# Run from this directory, passing the repository-root .env so the ${...}
+# variables below can be resolved:
+#   docker compose --env-file ../.env up -d
 services:
   pibot:
     build:
@@ -12,6 +13,7 @@ services:
     image: pibot:latest
     container_name: pibot
     restart: unless-stopped
+    # Provides TELEGRAM_BOT_TOKEN and TELEGRAM_ALLOWED_USERS to the container
     env_file:
       - path: ../.env
         required: false
@@ -19,16 +21,14 @@ services:
       - PUID=${PUID:-1000}
       - PGID=${PGID:-1000}
       - TZ=${TZ:-UTC}
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
-      - TELEGRAM_ALLOWED_USERS=${TELEGRAM_ALLOWED_USERS:-}
       - PYTHONUNBUFFERED=1
     volumes:
       # Persistent ZeroClaw state, config, memory database, and session data
       - ${ZEROCLAW_DATA_DIR:-../data/zeroclaw}:/home/zeroclaw/.zeroclaw
       # Antigravity CLI credentials and authentication cache
       # Set GEMINI_DATA_DIR in .env to an explicit host path (Compose does not expand '~')
-      - ${GEMINI_DATA_DIR:?Error: GEMINI_DATA_DIR must be set in .env (e.g. /home/<user>/.gemini or ../data/gemini)}:/home/zeroclaw/.gemini
-      # Shared workspace for agent outputs, scripts, and project repos
+      - ${GEMINI_DATA_DIR:?set GEMINI_DATA_DIR in .env and pass --env-file ../.env}:/home/zeroclaw/.gemini
+      # Shared workspace for agent outputs, scripts, and project repos (git-ignored)
       - ${WORKSPACE_DATA_DIR:-../workspaces}:/home/zeroclaw/workspaces
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8088/health >/dev/null && pgrep -x zeroclaw >/dev/null || exit 1"]

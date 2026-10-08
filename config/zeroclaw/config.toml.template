@@ -48,7 +48,8 @@ excluded_tools = []
 [providers.models]
 
 [providers.models.custom.agy]
-uri = "http://127.0.0.1:8088/v1"
+uri = "__AGY_SHIM_URI__"
+api_key = "__AGY_SHIM_TOKEN__"
 model = "agy-gemini-medium"
 wire_api = "chat_completions"
 context_window = 128000
@@ -197,7 +198,7 @@ inject_system_prompt = true
 show_in_response = false
 
 [memory]
-backend = "sqlite.sqlite"
+backend = "sqlite"
 search_mode = "bm25"
 auto_save = false
 

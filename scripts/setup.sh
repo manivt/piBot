@@ -3,6 +3,7 @@
 # scripts/setup.sh
 # End-to-end setup script for piBot.
 # Builds agy-shim, configures ZeroClaw, sets up agent workspace files, and starts systemd services.
+# Safe to re-run: it rebuilds, re-renders config and restarts the services.
 # ==============================================================================
 
 set -euo pipefail
@@ -17,7 +18,7 @@ echo " piBot Setup"
 echo "============================================================"
 
 # Step 1: Pre-flight checks
-echo "[*] Step 1: Checking required CLI tools..."
+echo "[*] Step 1: Checking required CLI tools and .env..."
 for cmd in go agy zeroclaw python3; do
   if ! command -v "${cmd}" &>/dev/null; then
     echo "[-] Error: Required command '${cmd}' not found in PATH."
@@ -25,24 +26,32 @@ for cmd in go agy zeroclaw python3; do
     exit 1
   fi
 done
-echo "[+] All required tools found."
 
-# Load configuration if present
 ENV_FILE="${REPO_ROOT}/.env"
-if [[ -f "${ENV_FILE}" ]]; then
-  # shellcheck disable=SC1090
-  source "${ENV_FILE}"
+if [[ ! -f "${ENV_FILE}" ]]; then
+  echo "[-] Error: ${ENV_FILE} does not exist."
+  echo "    Run: cp ${REPO_ROOT}/.env.example ${ENV_FILE}"
+  echo "    then set TELEGRAM_BOT_TOKEN and TELEGRAM_ALLOWED_USERS and re-run this script."
+  exit 1
 fi
+chmod 600 "${ENV_FILE}"
+# shellcheck disable=SC1090
+source "${ENV_FILE}"
+echo "[+] All required tools found."
 
 APPLIANCE_USER="${APPLIANCE_USER:-${USER}}"
 WORKSPACE_ROOT="${WORKSPACE_ROOT:-${HOME}/workspaces}"
 AGENT_NAME="${AGENT_NAME:-pibot}"
+AGY_SHIM_PORT="${AGY_SHIM_PORT:-8088}"
+AGENT_WORKSPACE="${HOME}/.zeroclaw/agents/${AGENT_NAME}/workspace"
+SHIM_ENV_FILE="${HOME}/.config/pibot/agy-shim.env"
 
 # Step 2: Ensure workspace directories exist
 echo "[*] Step 2: Preparing directory layout..."
 mkdir -p "${WORKSPACE_ROOT}/agy-shim"
-mkdir -p "${HOME}/.zeroclaw/agents/${AGENT_NAME}/workspace"
+mkdir -p "${AGENT_WORKSPACE}"
 mkdir -p "${HOME}/.config/systemd/user"
+mkdir -p "$(dirname "${SHIM_ENV_FILE}")"
 
 # Step 3: Build agy-shim
 echo "[*] Step 3: Compiling agy-shim bridge..."
@@ -54,41 +63,65 @@ cp "${REPO_ROOT}/agy-shim/go.mod" "${WORKSPACE_ROOT}/agy-shim/go.mod"
 )
 echo "[+] agy-shim compiled successfully at ${WORKSPACE_ROOT}/agy-shim/agy-shim"
 
-# Step 4: Deploy Agent prompt files
-echo "[*] Step 4: Deploying piBot workspace prompt files..."
-cp "${REPO_ROOT}/agent/workspace/"*.md "${HOME}/.zeroclaw/agents/${AGENT_NAME}/workspace/"
-echo "[+] Workspace files deployed to ${HOME}/.zeroclaw/agents/${AGENT_NAME}/workspace/"
-
-# Step 5: Render ZeroClaw configuration
-echo "[*] Step 5: Configuring ZeroClaw..."
-if [[ ! -f "${ENV_FILE}" ]]; then
-  echo "[-] Warning: ${ENV_FILE} does not exist."
-  echo "    Creating ${ENV_FILE} from .env.example..."
-  cp "${REPO_ROOT}/.env.example" "${ENV_FILE}"
-  echo "    PLEASE EDIT ${ENV_FILE} and set your TELEGRAM_BOT_TOKEN and TELEGRAM_ALLOWED_USERS before continuing."
-  exit 1
+# Step 4: Generate (once) the shared secret between ZeroClaw and agy-shim
+echo "[*] Step 4: Preparing agy-shim credentials..."
+AGY_SHIM_TOKEN=""
+if [[ -f "${SHIM_ENV_FILE}" ]]; then
+  AGY_SHIM_TOKEN="$(sed -n 's/^AGY_SHIM_TOKEN=//p' "${SHIM_ENV_FILE}")"
 fi
+if [[ -z "${AGY_SHIM_TOKEN}" ]]; then
+  AGY_SHIM_TOKEN="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
+  echo "[+] Generated a new agy-shim token."
+fi
+(
+  umask 077
+  printf 'AGY_SHIM_TOKEN=%s\nAGY_SHIM_PORT=%s\n' "${AGY_SHIM_TOKEN}" "${AGY_SHIM_PORT}" > "${SHIM_ENV_FILE}"
+)
+export AGY_SHIM_TOKEN AGY_SHIM_PORT
+echo "[+] agy-shim credentials stored in ${SHIM_ENV_FILE} (mode 0600)."
 
+# Step 5: Deploy Agent prompt files
+# Defaults come from agent/workspace/; your personal versions in agent/local/
+# (git-ignored, so they never get committed) override them file by file.
+echo "[*] Step 5: Deploying piBot workspace prompt files..."
+cp "${REPO_ROOT}/agent/workspace/"*.md "${AGENT_WORKSPACE}/"
+if compgen -G "${REPO_ROOT}/agent/local/*.md" > /dev/null; then
+  cp "${REPO_ROOT}/agent/local/"*.md "${AGENT_WORKSPACE}/"
+  echo "[+] Applied personal overrides from agent/local/."
+fi
+echo "[+] Workspace files deployed to ${AGENT_WORKSPACE}/"
+
+# Step 6: Render ZeroClaw configuration
+echo "[*] Step 6: Configuring ZeroClaw..."
 "${REPO_ROOT}/scripts/render-config.sh" "${HOME}/.zeroclaw/config.toml"
 
-# Step 6: Install systemd units
-echo "[*] Step 6: Installing and starting systemd services..."
+# Step 7: Install systemd units
+echo "[*] Step 7: Installing and (re)starting systemd services..."
 
 # System service for agy-shim
 sed -e "s|__APPLIANCE_USER__|${APPLIANCE_USER}|g" \
     -e "s|__WORKSPACE_ROOT__|${WORKSPACE_ROOT}|g" \
     -e "s|__HOME__|${HOME}|g" \
+    -e "s|__SHIM_ENV_FILE__|${SHIM_ENV_FILE}|g" \
     "${REPO_ROOT}/systemd/agy-shim.service" | sudo tee /etc/systemd/system/agy-shim.service > /dev/null
 
 sudo systemctl daemon-reload
-sudo systemctl enable --now agy-shim
+sudo systemctl enable agy-shim
+sudo systemctl restart agy-shim
 echo "[+] agy-shim system service configured and started."
 
 # User service for zeroclaw
 cp "${REPO_ROOT}/systemd/zeroclaw.service" "${HOME}/.config/systemd/user/zeroclaw.service"
 systemctl --user daemon-reload
-systemctl --user enable --now zeroclaw
+systemctl --user enable zeroclaw
+systemctl --user restart zeroclaw
 echo "[+] zeroclaw user service enabled and started."
+
+# Without lingering, the user service only runs while someone is logged in.
+if ! loginctl show-user "${USER}" -p Linger 2>/dev/null | grep -q 'Linger=yes'; then
+  sudo loginctl enable-linger "${USER}"
+  echo "[+] Enabled systemd lingering so piBot starts at boot."
+fi
 
 echo "============================================================"
 echo " Setup complete! Run '${REPO_ROOT}/scripts/verify.sh' to verify."

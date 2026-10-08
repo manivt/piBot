@@ -2,13 +2,12 @@
 # ==============================================================================
 # scripts/install-prereqs.sh
 # Installs core dependencies for piBot on Debian/Ubuntu Linux (ARM64/x86_64).
-# Installs: Go (>=1.24), Python 3, Antigravity CLI (agy), ZeroClaw
+# Installs: Go, Python 3, Antigravity CLI (agy), ZeroClaw (checksum-verified)
 # ==============================================================================
 
 set -euo pipefail
 
 ZEROCLAW_VERSION="${ZEROCLAW_VERSION:-0.8.5}"
-AGY_VERSION="${AGY_VERSION:-1.2.14}"
 
 echo "=== [1/5] Updating package lists & installing base tools ==="
 sudo apt-get update -y
@@ -23,10 +22,16 @@ sudo apt-get install -y \
 
 echo "=== [2/5] Enabling systemd user lingering ==="
 # User lingering allows the zeroclaw user systemd service to start on boot without an interactive login
-loginctl enable-linger "${USER}" || true
-echo "[+] User lingering enabled for ${USER}."
+# (needs root: without sudo, polkit denies it in non-interactive sessions)
+if sudo loginctl enable-linger "${USER}"; then
+  echo "[+] User lingering enabled for ${USER}."
+else
+  echo "[-] Warning: could not enable lingering; piBot will only run while ${USER} is logged in."
+fi
 
-echo "=== [3/5] Installing Antigravity CLI (agy ~v${AGY_VERSION}) ==="
+echo "=== [3/5] Installing Antigravity CLI (agy, latest release) ==="
+# Google's installer always fetches the latest release (it verifies the
+# download checksum itself); it does not support pinning a version.
 if ! command -v agy &>/dev/null && [[ ! -x "${HOME}/.local/bin/agy" ]]; then
   echo "[*] Downloading and installing Antigravity CLI..."
   curl -fsSL https://antigravity.google/cli/install.sh | bash
@@ -43,18 +48,31 @@ if ! command -v zeroclaw &>/dev/null && [[ ! -x "${HOME}/.cargo/bin/zeroclaw" ]]
   case "${ARCH}" in
     aarch64|arm64) TARGET_TRIPLE="aarch64-unknown-linux-gnu" ;;
     x86_64|amd64)  TARGET_TRIPLE="x86_64-unknown-linux-gnu" ;;
-    *)             TARGET_TRIPLE="" ;;
+    armv7l)        TARGET_TRIPLE="armv7-unknown-linux-gnueabihf" ;;
+    *)
+      echo "[-] Error: unsupported architecture '${ARCH}'. Use a 64-bit OS (see docs/HARDWARE.md)."
+      exit 1
+      ;;
   esac
 
-  mkdir -p "${HOME}/.cargo/bin"
-  if [[ -n "${TARGET_TRIPLE}" ]]; then
-    echo "[*] Downloading pinned ZeroClaw v${ZEROCLAW_VERSION} (${TARGET_TRIPLE})..."
-    curl -fsSL "https://github.com/zeroclaw-labs/zeroclaw/releases/download/v${ZEROCLAW_VERSION}/zeroclaw-${TARGET_TRIPLE}.tar.gz" | tar -xz -C "${HOME}/.cargo/bin"
-    chmod +x "${HOME}/.cargo/bin/zeroclaw"
-  else
-    echo "[*] Falling back to ZeroClaw installer script..."
-    curl -fsSL https://raw.githubusercontent.com/zeroclaw-labs/zeroclaw/master/install.sh | sh -s -- --prebuilt --skip-quickstart
+  RELEASE_URL="https://github.com/zeroclaw-labs/zeroclaw/releases/download/v${ZEROCLAW_VERSION}"
+  ASSET="zeroclaw-${TARGET_TRIPLE}.tar.gz"
+  TMP_DIR="$(mktemp -d)"
+  trap 'rm -rf "${TMP_DIR}"' EXIT
+
+  echo "[*] Downloading pinned ZeroClaw v${ZEROCLAW_VERSION} (${TARGET_TRIPLE})..."
+  curl -fsSL -o "${TMP_DIR}/${ASSET}" "${RELEASE_URL}/${ASSET}"
+  curl -fsSL -o "${TMP_DIR}/SHA256SUMS" "${RELEASE_URL}/SHA256SUMS"
+
+  echo "[*] Verifying SHA-256 checksum..."
+  if ! (cd "${TMP_DIR}" && grep -E "[[:space:]]\*?${ASSET}\$" SHA256SUMS | sha256sum -c --status -); then
+    echo "[-] Error: checksum verification failed for ${ASSET}. Aborting."
+    exit 1
   fi
+
+  mkdir -p "${HOME}/.cargo/bin"
+  tar -xzf "${TMP_DIR}/${ASSET}" -C "${HOME}/.cargo/bin" zeroclaw
+  chmod +x "${HOME}/.cargo/bin/zeroclaw"
 fi
 
 # Ensure ~/.cargo/bin and ~/.local/bin are in PATH for current and future sessions

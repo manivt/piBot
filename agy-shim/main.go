@@ -3,21 +3,35 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"mime"
 	"net/http"
+	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
 
 const (
-	listenAddr        = "127.0.0.1:8088"
+	defaultPort       = 8088
 	heartbeatInterval = 30 * time.Second
 	maxLogFieldChars  = 4000
+
+	// Linux caps a single argv string at 128 KiB (MAX_ARG_STRLEN). The prompt is
+	// passed to agy as one argument, so keep it safely below that limit.
+	maxPromptBytes = 120 * 1024
 )
+
+var errPromptTooLarge = errors.New("prompt exceeds the agy argument size limit")
+
+// shimToken is the shared secret ZeroClaw must send as "Authorization: Bearer <token>".
+// It keeps other local processes (and browser pages via CSRF) from driving agy.
+var shimToken string
 
 type Message struct {
 	Role    string `json:"role"`
@@ -87,25 +101,65 @@ func contentToString(v any) string {
 	}
 }
 
-func buildPrompt(messages []Message) string {
-	var b strings.Builder
+// buildPrompt flattens the chat into one prompt. If it would exceed
+// maxPromptBytes, the oldest non-system messages are dropped (the system
+// prompt and the latest message are always kept). It returns the number of
+// dropped messages, or errPromptTooLarge if even the kept messages don't fit.
+func buildPrompt(messages []Message) (string, int, error) {
+	const footer = "Respond to the user's latest request."
 
-	for _, m := range messages {
+	blocks := make([]string, len(messages))
+	keep := make([]bool, len(messages))
+	total := len(footer)
+	last := -1
+
+	for i, m := range messages {
 		content := strings.TrimSpace(contentToString(m.Content))
 		if content == "" {
 			continue
 		}
-
-		fmt.Fprintf(
-			&b,
-			"%s:\n%s\n\n",
-			strings.ToUpper(m.Role),
-			content,
-		)
+		blocks[i] = fmt.Sprintf("%s:\n%s\n\n", strings.ToUpper(m.Role), content)
+		keep[i] = true
+		total += len(blocks[i])
+		last = i
 	}
 
-	b.WriteString("Respond to the user's latest request.")
-	return b.String()
+	dropped := 0
+	for i := range messages {
+		if total <= maxPromptBytes {
+			break
+		}
+		if !keep[i] || i == last || messages[i].Role == "system" {
+			continue
+		}
+		keep[i] = false
+		total -= len(blocks[i])
+		dropped++
+	}
+
+	notice := ""
+	if dropped > 0 {
+		notice = fmt.Sprintf("[%d earlier messages omitted to fit the prompt size limit]\n\n", dropped)
+		total += len(notice)
+	}
+	if total > maxPromptBytes {
+		return "", dropped, errPromptTooLarge
+	}
+
+	var b strings.Builder
+	noticeWritten := false
+	for i, m := range messages {
+		if !keep[i] {
+			continue
+		}
+		if notice != "" && !noticeWritten && m.Role != "system" {
+			b.WriteString(notice)
+			noticeWritten = true
+		}
+		b.WriteString(blocks[i])
+	}
+	b.WriteString(footer)
+	return b.String(), dropped, nil
 }
 
 func mapModel(requested string) string {
@@ -323,7 +377,7 @@ func runAgy(
 		// This is an important diagnostic case: agy has sometimes returned
 		// status=SUCCESS with no final response after doing substantial work.
 		log.Printf(
-			"request_id=%s agy_empty_response model=%s elapsed=%s conversation_id=%q status=%q agy_error=%q turns=%d input_tokens=%d output_tokens=%d thinking_tokens=%d cache_read_tokens=%d total_tokens=%d denied_actions=%s stderr_tail=%q raw_json=%q",
+			"request_id=%s agy_empty_response model=%s elapsed=%s conversation_id=%q status=%q agy_error=%q turns=%d input_tokens=%d output_tokens=%d thinking_tokens=%d cache_read_tokens=%d total_tokens=%d denied_actions=%s stderr_tail=%q",
 			requestID,
 			model,
 			duration.Round(time.Millisecond),
@@ -338,7 +392,6 @@ func runAgy(
 			agyResp.Usage.TotalTokens,
 			deniedActionsForLog(agyResp.DeniedActions),
 			truncateForLog(stderr.String(), maxLogFieldChars),
-			truncateForLog(stdout.String(), maxLogFieldChars),
 		)
 
 		return "", agyResp, duration, fmt.Errorf(
@@ -357,6 +410,20 @@ func chatCompletions(w http.ResponseWriter, r *http.Request) {
 
 	requestID := fmt.Sprintf("%d", time.Now().UnixNano())
 	requestStart := time.Now()
+
+	if !authorized(r) {
+		log.Printf("request_id=%s request_rejected reason=unauthorized", requestID)
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Browsers can send text/plain or form bodies cross-origin without a CORS
+	// preflight; only accepting application/json blocks that CSRF path.
+	if mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type")); err != nil || mediaType != "application/json" {
+		log.Printf("request_id=%s request_rejected reason=unsupported_content_type", requestID)
+		http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
+		return
+	}
 
 	// Protect the Pi from unexpectedly large requests.
 	r.Body = http.MaxBytesReader(w, r.Body, 4<<20) // 4 MiB
@@ -383,15 +450,25 @@ func chatCompletions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	prompt := buildPrompt(req.Messages)
+	prompt, dropped, err := buildPrompt(req.Messages)
+	if err != nil {
+		log.Printf(
+			"request_id=%s request_rejected reason=prompt_too_large messages=%d",
+			requestID,
+			len(req.Messages),
+		)
+		http.Error(w, "prompt too large", http.StatusRequestEntityTooLarge)
+		return
+	}
 	model := mapModel(req.Model)
 
 	log.Printf(
-		"request_id=%s request_received requested_model=%q mapped_model=%s messages=%d prompt_chars=%d content_length=%d",
+		"request_id=%s request_received requested_model=%q mapped_model=%s messages=%d dropped_messages=%d prompt_chars=%d content_length=%d",
 		requestID,
 		req.Model,
 		model,
 		len(req.Messages),
+		dropped,
 		len(prompt),
 		r.ContentLength,
 	)
@@ -514,7 +591,41 @@ func health(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(`{"status":"ok"}`))
 }
 
+func authorized(r *http.Request) bool {
+	const prefix = "Bearer "
+	h := r.Header.Get("Authorization")
+	if !strings.HasPrefix(h, prefix) {
+		return false
+	}
+	got := []byte(strings.TrimPrefix(h, prefix))
+	return subtle.ConstantTimeCompare(got, []byte(shimToken)) == 1
+}
+
+func listenPort() (int, error) {
+	v := strings.TrimSpace(os.Getenv("AGY_SHIM_PORT"))
+	if v == "" {
+		return defaultPort, nil
+	}
+	port, err := strconv.Atoi(v)
+	if err != nil || port < 1 || port > 65535 {
+		return 0, fmt.Errorf("invalid AGY_SHIM_PORT %q", v)
+	}
+	return port, nil
+}
+
 func main() {
+	shimToken = strings.TrimSpace(os.Getenv("AGY_SHIM_TOKEN"))
+	if len(shimToken) < 32 {
+		log.Fatal("AGY_SHIM_TOKEN must be set to a random secret of at least 32 characters (scripts/setup.sh generates one)")
+	}
+
+	port, err := listenPort()
+	if err != nil {
+		log.Fatal(err)
+	}
+	// Always loopback-only; the port is configurable, the interface is not.
+	listenAddr := fmt.Sprintf("127.0.0.1:%d", port)
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/health", health)
