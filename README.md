@@ -109,7 +109,7 @@ Everything in the Quickstart below is run on the Pi in this SSH session.
 Run these on the Pi (over SSH if it's headless, see above). Minimal images (e.g. Raspberry Pi OS Lite, Debian) may not include `git` yet:
 ```bash
 sudo apt-get update && sudo apt-get install -y git
-git clone https://github.com/<your-username>/piBot.git
+git clone https://github.com/manivt/piBot.git
 cd piBot
 ```
 
