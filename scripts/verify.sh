@@ -99,6 +99,20 @@ else
   fail "run: sudo loginctl enable-linger ${USER}"
 fi
 
+# Right after setup.sh restarts ZeroClaw, its channels have not reported in yet
+# and the doctor would flag them as "stale". Give a fresh start time to settle.
+SETTLE_SECS=60
+START_US="$(systemctl --user show zeroclaw -p ActiveEnterTimestampMonotonic --value 2>/dev/null)"
+NOW_US="$(awk '{printf "%d", $1 * 1000000}' /proc/uptime)"
+if [[ "${START_US:-0}" =~ ^[0-9]+$ && "${START_US:-0}" -gt 0 ]]; then
+  UP_SECS=$(( (NOW_US - START_US) / 1000000 ))
+  if (( UP_SECS < SETTLE_SECS )); then
+    echo ""
+    echo "[*] ZeroClaw started ${UP_SECS}s ago; waiting $(( SETTLE_SECS - UP_SECS ))s for it to finish connecting..."
+    sleep $(( SETTLE_SECS - UP_SECS ))
+  fi
+fi
+
 # 8. Run ZeroClaw Doctor. It exits 0 even when it reports errors, so check its output.
 # "live model listing is not supported" is expected for the custom agy provider.
 echo ""
