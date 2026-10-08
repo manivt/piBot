@@ -150,7 +150,9 @@ Authenticate with your Google account (works with both free Google accounts and 
 ```bash
 agy
 ```
-It prints a Google sign-in URL. Open it in a browser on any device (handy for a headless Pi over SSH), complete the sign-in, then exit the CLI. Your login is stored in `~/.gemini/` — treat that folder like a password, and consider using a separate Google account for the bot (see the Security Model section below).
+It prints a Google sign-in URL. Open it in a browser on any device (handy for a headless Pi over SSH), complete the sign-in, then exit the CLI.
+
+> **Tip: the sign-in link is very long.** In an SSH terminal it usually can't be clicked, and it wraps over several lines. If you copy it straight into a browser, the hidden line breaks and leading spaces break the link. Paste it into a text editor first (e.g. Notepad++ or Notepad), join it into **one line with no spaces** — it should start with `https://accounts.google.com/` and run unbroken to the end — then copy that into your browser. Your login is stored in `~/.gemini/` — treat that folder like a password, and consider using a separate Google account for the bot (see the Security Model section below).
 
 ### 4. Configure Your Bot & Telegram Secrets
 
