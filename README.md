@@ -230,14 +230,30 @@ Files in `agent/local/` override the defaults with the same name. Redeploy at an
 ```bash
 # View live bot logs
 journalctl --user -u zeroclaw -f
+# ...if that says "No journal files were found" (e.g. on Raspberry Pi OS), use:
+sudo journalctl --user-unit zeroclaw -f
 
-# View agy-shim bridge logs
+# View agy-shim bridge logs (one request_received line per message sent to Google)
 sudo journalctl -u agy-shim -f
 
 # Restart services
 sudo systemctl restart agy-shim
 systemctl --user restart zeroclaw
 ```
+
+### Checking your Gemini usage
+
+`agy` shows your remaining quota and when it resets. Run `agy`, type `/usage` and press Enter (exit with Ctrl+\\ if it won't let go).
+
+To see how many tokens the bot itself has used today:
+```bash
+sudo journalctl -u agy-shim --since today | grep -o 'total_tokens=[0-9]*' | cut -d= -f2 \
+  | awk '{s+=$1; n++} END {print n" requests, "s" tokens today"}'
+```
+
+Expect roughly **15–20k tokens per message**, even for a short "hi": `agy` adds about 12k tokens of its own instructions, and piBot's persona files (`agent/workspace/*.md`) add about 5k. Trimming those files lowers the cost of every message. When the quota runs out, the bot stops replying and the agy-shim log shows `agy_process_error` or `agy_non_success` until it resets.
+
+> **Tip:** the first time you open your bot in Telegram, tapping **Start** sends `/start` as a message, so you'll see one extra request in the logs. That's expected.
 
 ---
 
