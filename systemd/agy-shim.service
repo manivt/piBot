@@ -1,7 +1,7 @@
 [Unit]
 Description=piBot Antigravity Shim
-After=network-online.target
-Wants=network-online.target
+After=network-online.target pibot-lan-guard.service
+Wants=network-online.target pibot-lan-guard.service
 
 [Service]
 Type=simple

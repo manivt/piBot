@@ -18,6 +18,7 @@ sudo apt-get install -y \
   python3 \
   python3-pip \
   golang-go \
+  nftables \
   ca-certificates
 
 echo "=== [2/5] Enabling systemd user lingering ==="

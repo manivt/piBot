@@ -1,0 +1,12 @@
+[Unit]
+Description=piBot LAN guard (blocks the bot user from reaching other local-network devices)
+Before=agy-shim.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f /etc/pibot/lan-guard.nft
+ExecStop=/usr/sbin/nft delete table inet pibot_lan_guard
+
+[Install]
+WantedBy=multi-user.target

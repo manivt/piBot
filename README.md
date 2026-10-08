@@ -48,7 +48,8 @@ Google Cloud AI Models (Gemini 3.8 Flash, Medium, etc.)
 - **OS:** Debian GNU/Linux 12/13 (ARM64) or Raspberry Pi OS (64-bit).
 
 For hardware notes and swap setup, see **[docs/HARDWARE.md](docs/HARDWARE.md)**.  
-For deep architecture and flow details, see **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
+For deep architecture and flow details, see **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.  
+For security safeguards and how to change them (e.g. the LAN guard), see **[docs/SECURITY.md](docs/SECURITY.md)**.
 
 ---
 
@@ -192,11 +193,26 @@ piBot is an **autonomous agent with full control of the account it runs as**. It
 - **Anyone who controls your Telegram account controls the Pi.** Turn on Telegram two-step verification and keep `TELEGRAM_ALLOWED_USERS` to yourself.
 - **Prompt injection is a real risk.** If you ask the bot to read a web page, email, or file, text hidden in it can try to hijack the bot. The persona tells it to treat such content as data, but that is not a guarantee.
 - **The bot can read everything its user can,** including your Google login in `~/.gemini/` and the bot token in `.env`.
+- **Whatever the bot sees is sent to Google** as part of its requests: your messages, files it reads, and command output. Keep passwords, financial documents and other people's private data away from it.
 
 Recommended:
 - Use a **dedicated Pi and a dedicated Linux user** for piBot, with nothing else of value on it.
-- **Do not give that user passwordless sudo** (Raspberry Pi OS grants it to the first user by default — create a separate user, or remove `/etc/sudoers.d/010_pi-nopasswd` once setup is done). Setup itself only needs sudo while you run it.
+- **Do not give that user passwordless sudo** (Raspberry Pi OS grants it to the first user by default — create a separate user, or remove `/etc/sudoers.d/010_pi-nopasswd` once setup is done). Setup itself only needs sudo while you run it. Without sudo the bot also can't switch off the LAN guard below.
 - Consider using a **separate Google account** for `agy`.
+
+### Local network protection (LAN guard)
+
+By default piBot is kept away from the other devices on your home network (computers, phones, router, NAS, cameras and other smart-home gear) in two ways:
+
+1. **A rule in `agent/workspace/AGENTS.md`**: the bot refuses to scan or access other devices, even if you ask.
+2. **A firewall (the "LAN guard")** that `setup.sh` installs: the bot's Linux account simply cannot open connections to local-network addresses. Internet access, DNS and your SSH session into the Pi keep working. `verify.sh` check 8 confirms it is active.
+
+Want the bot to work with your local network? You can relax either or both:
+- **Turn the firewall off:** set `LAN_GUARD=off` in `.env`, then rerun `./scripts/setup.sh`.
+- **Allow only specific devices:** add them to the firewall instead of turning it off.
+- **Change the bot's rule:** copy `AGENTS.md` into `agent/local/` and edit the "Stay on this Pi" line there; your version stays out of git.
+
+Step-by-step instructions, and what each choice means for safety, are in **[docs/SECURITY.md](docs/SECURITY.md)**.
 
 ---
 

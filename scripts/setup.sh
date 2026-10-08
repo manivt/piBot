@@ -95,8 +95,36 @@ echo "[+] Workspace files deployed to ${AGENT_WORKSPACE}/"
 echo "[*] Step 6: Configuring ZeroClaw..."
 "${REPO_ROOT}/scripts/render-config.sh" "${HOME}/.zeroclaw/config.toml"
 
-# Step 7: Install systemd units
-echo "[*] Step 7: Installing and (re)starting systemd services..."
+# Step 7: LAN guard — firewall the bot's account away from other devices on
+# the local network (internet, DNS and inbound SSH keep working).
+LAN_GUARD="${LAN_GUARD:-on}"
+if [[ "${LAN_GUARD}" == "off" ]]; then
+  echo "[*] Step 7: LAN guard disabled (LAN_GUARD=off in .env)."
+  if [[ -f /etc/systemd/system/pibot-lan-guard.service ]]; then
+    sudo systemctl disable --now pibot-lan-guard || true
+    sudo rm -f /etc/systemd/system/pibot-lan-guard.service
+    sudo systemctl daemon-reload
+  fi
+else
+  echo "[*] Step 7: Installing the LAN guard firewall..."
+  if [[ ! -x /usr/sbin/nft ]]; then
+    echo "[-] Error: nftables is not installed. Run: sudo apt-get install -y nftables"
+    echo "    (or set LAN_GUARD=off in .env to skip the firewall)."
+    exit 1
+  fi
+  BOT_UIDS="$(printf '%s\n' "$(id -u "${APPLIANCE_USER}")" "$(id -u)" | sort -u | paste -sd, - | sed 's/,/, /g')"
+  sudo mkdir -p /etc/pibot
+  sed "s|__BOT_UIDS__|${BOT_UIDS}|g" "${REPO_ROOT}/systemd/pibot-lan-guard.nft" | sudo tee /etc/pibot/lan-guard.nft > /dev/null
+  sudo nft -c -f /etc/pibot/lan-guard.nft
+  sudo cp "${REPO_ROOT}/systemd/pibot-lan-guard.service" /etc/systemd/system/pibot-lan-guard.service
+  sudo systemctl daemon-reload
+  sudo systemctl enable pibot-lan-guard
+  sudo systemctl restart pibot-lan-guard
+  echo "[+] LAN guard active for UID(s) ${BOT_UIDS}: no access to other local-network devices."
+fi
+
+# Step 8: Install systemd units
+echo "[*] Step 8: Installing and (re)starting systemd services..."
 
 # System service for agy-shim
 sed -e "s|__APPLIANCE_USER__|${APPLIANCE_USER}|g" \
