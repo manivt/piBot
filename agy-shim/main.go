@@ -162,6 +162,9 @@ func buildPrompt(messages []Message) (string, int, error) {
 	return b.String(), dropped, nil
 }
 
+// shimModels are the model names ZeroClaw may request (see mapModel).
+var shimModels = []string{"agy-gemini-medium", "agy-gemini-high", "agy-sonnet", "agy-opus"}
+
 func mapModel(requested string) string {
 	switch requested {
 	case "agy-gemini-high":
@@ -591,6 +594,32 @@ func health(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(`{"status":"ok"}`))
 }
 
+// listModels implements the OpenAI-compatible GET /v1/models, which ZeroClaw's
+// doctor uses to validate the provider.
+func listModels(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !authorized(r) {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	type model struct {
+		ID      string `json:"id"`
+		Object  string `json:"object"`
+		OwnedBy string `json:"owned_by"`
+	}
+	data := make([]model, 0, len(shimModels))
+	for _, id := range shimModels {
+		data = append(data, model{ID: id, Object: "model", OwnedBy: "agy-shim"})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"object": "list", "data": data})
+}
+
 func authorized(r *http.Request) bool {
 	const prefix = "Bearer "
 	h := r.Header.Get("Authorization")
@@ -630,6 +659,7 @@ func main() {
 
 	mux.HandleFunc("/health", health)
 	mux.HandleFunc("/v1/chat/completions", chatCompletions)
+	mux.HandleFunc("/v1/models", listModels)
 
 	server := &http.Server{
 		Addr:              listenAddr,

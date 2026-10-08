@@ -75,6 +75,24 @@ func TestAuthorized(t *testing.T) {
 	}
 }
 
+func TestListModelsRequiresAuthAndListsModels(t *testing.T) {
+	shimToken = strings.Repeat("b", 64)
+
+	rec := httptest.NewRecorder()
+	listModels(rec, httptest.NewRequest("GET", "/v1/models", nil))
+	if rec.Code != 401 {
+		t.Fatalf("without token: got %d, want 401", rec.Code)
+	}
+
+	req := httptest.NewRequest("GET", "/v1/models", nil)
+	req.Header.Set("Authorization", "Bearer "+shimToken)
+	rec = httptest.NewRecorder()
+	listModels(rec, req)
+	if rec.Code != 200 || !strings.Contains(rec.Body.String(), `"id":"agy-gemini-medium"`) {
+		t.Fatalf("with token: got %d %s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestListenPort(t *testing.T) {
 	t.Setenv("AGY_SHIM_PORT", "")
 	if p, err := listenPort(); err != nil || p != defaultPort {
