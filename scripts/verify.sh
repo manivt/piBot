@@ -31,22 +31,28 @@ else
   fail
 fi
 
-echo -n "[*] 2. Checking agy is signed in (up to 60s)... "
+echo -n "[*] 2. Checking agy answers a test prompt (up to 90s)... "
+# Use print mode (-p), exactly like agy-shim does. Other subcommands such as
+# `agy models` can open an interactive picker on the terminal and never return.
 # Write to a file rather than using $(...): agy can leave helper processes
 # holding stdout open, which would make a command substitution wait forever.
-AGY_MODELS_FILE="$(mktemp)"
-timeout -k 5 60 agy models </dev/null >"${AGY_MODELS_FILE}" 2>&1
+AGY_OUT_FILE="$(mktemp)"
+(
+  cd "${WORKSPACE_ROOT:-${HOME}/workspaces}" 2>/dev/null || cd "${HOME}"
+  timeout -k 5 90 agy -p "Reply with exactly: OK" --output-format json </dev/null >"${AGY_OUT_FILE}" 2>&1
+)
 AGY_RC=$?
-AGY_MODELS="$(cat "${AGY_MODELS_FILE}")"
-rm -f "${AGY_MODELS_FILE}"
-if [[ "${AGY_MODELS}" == *"sign in"* ]]; then
-  fail "run 'agy' once and complete the Google sign-in"
+AGY_STATUS="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("status",""))' "${AGY_OUT_FILE}" 2>/dev/null)"
+AGY_OUT="$(cat "${AGY_OUT_FILE}")"
+rm -f "${AGY_OUT_FILE}"
+if [[ "${AGY_OUT}" == *"Authentication required"* || "${AGY_OUT}" == *"sign in"* ]]; then
+  fail "not signed in: run 'agy' once and complete the Google sign-in"
 elif [[ "${AGY_RC}" -eq 124 || "${AGY_RC}" -eq 137 ]]; then
-  fail "'agy models' did not finish within 60s"
-elif [[ -z "${AGY_MODELS}" ]]; then
-  fail "no output from 'agy models'"
-else
+  fail "agy did not answer within 90s"
+elif [[ "${AGY_STATUS^^}" == "SUCCESS" ]]; then
   echo "OK"
+else
+  fail "unexpected agy result: $(head -c 200 <<< "${AGY_OUT}")"
 fi
 
 # 3. Check agy-shim HTTP health and auth
