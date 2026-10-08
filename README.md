@@ -267,15 +267,9 @@ sudo journalctl -u agy-shim --since today | grep -o 'total_tokens=[0-9]*' | cut 
   | awk '{s+=$1; n++} END {print n" requests, "s" tokens today"}'
 ```
 
-Expect roughly **15–20k tokens per message**, even for a short "hi": `agy` adds about 12k tokens of its own instructions, and piBot's persona files (`agent/workspace/*.md`) add about 5k. Trimming those files lowers the cost of every message. When the quota runs out, the bot stops replying and the agy-shim log shows `agy_process_error` or `agy_non_success` until it resets.
+Expect roughly **15–20k tokens per message**, even for a short "hi": `agy` adds about 12k tokens of its own instructions, and piBot's own instructions, tool descriptions and persona files (`agent/workspace/*.md`) add a few thousand more. Trimming those files lowers the cost of every message. When the quota runs out, the bot stops replying and the agy-shim log shows `agy_process_error` or `agy_non_success` until it resets.
 
 > **Tip:** the first time you open your bot in Telegram, tapping **Start** sends `/start` as a message, so you'll see one extra request in the logs. That's expected.
-
----
-
-## Optional: Docker Deployment
-
-If you prefer running in Docker rather than systemd services, see the **[docker/README.md](docker/README.md)** guide.
 
 ---
 

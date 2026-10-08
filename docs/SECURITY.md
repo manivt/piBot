@@ -95,9 +95,3 @@ Files in `agent/local/` replace the defaults with the same name and are git-igno
 ```
 
 Keep the firewall and the rule consistent: a rule that allows something the firewall blocks just produces errors, and a firewall that allows something the rule forbids just goes unused.
-
----
-
-## Docker deployments
-
-The LAN guard is installed by `setup.sh` for the native (systemd) setup only. The Docker container does not set it up; use Docker's own network controls if you need the same protection there.

@@ -7,9 +7,9 @@
 | Hardware | RAM | Status | Notes |
 |---|---|---|---|
 | **Raspberry Pi 3 Model B+** | 1 GB | **Verified Reference Baseline** | Minimum recommended. Requires ~1 GB swapfile. Idles around ~300 MB RAM usage. |
-| **Raspberry Pi 4 Model B** | 2 GB / 4 GB / 8 GB | **Supported** | Plenty of headroom. Docker or bare-metal setup runs smoothly. |
+| **Raspberry Pi 4 Model B** | 2 GB / 4 GB / 8 GB | **Supported** | Plenty of headroom. |
 | **Raspberry Pi 5** | 4 GB / 8 GB | **Supported** | Fast compilation and script execution. |
-| **Raspberry Pi Zero 2 W** | 512 MB | Experimental | Tight RAM; recommend at least 1.5 GB swap. Bare-metal systemd only (no Docker). |
+| **Raspberry Pi Zero 2 W** | 512 MB | Experimental | Tight RAM; recommend at least 1.5 GB swap. |
 | **x86_64 / ARM64 Linux VM** | Any | **Supported** | Debian 12/13, Ubuntu 22.04/24.04, or similar modern Linux distributions. |
 
 ## Recommended Operating System
