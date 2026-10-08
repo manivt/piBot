@@ -1,0 +1,32 @@
+# Environment secrets and credentials
+.env
+.env.local
+*.env
+
+# ZeroClaw state, tokens, databases
+data/
+*.db
+*.db-journal
+*.sqlite
+brain.db
+*.session
+
+# Compiled binaries and build artifacts
+agy-shim/agy-shim
+bin/
+dist/
+*.o
+*.a
+
+# Antigravity CLI credentials and local state
+.gemini/
+.antigravity/
+
+# OS and Editor metadata
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/

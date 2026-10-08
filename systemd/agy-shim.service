@@ -1,0 +1,16 @@
+[Unit]
+Description=piBot Antigravity Shim
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__APPLIANCE_USER__
+WorkingDirectory=__WORKSPACE_ROOT__
+Environment="PATH=/usr/local/bin:/usr/bin:/bin:__HOME__/.local/bin"
+ExecStart=__WORKSPACE_ROOT__/agy-shim/agy-shim
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

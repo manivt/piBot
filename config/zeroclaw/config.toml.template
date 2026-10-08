@@ -1,0 +1,207 @@
+schema_version = 3
+
+[providers]
+
+[agents.pibot.a2a]
+exposed_skills = []
+published = false
+
+[agents.pibot.identity]
+format = "openclaw"
+
+[agents.pibot.memory]
+backend = "sqlite"
+
+[agents.pibot.precheck]
+enabled = false
+timeout_secs = 5
+
+[agents.pibot.workspace]
+read_memory_from = []
+unrestricted_filesystem = false
+
+[runtime_profiles.unbounded.thinking.budget_tokens]
+
+[peer_groups.telegram_default]
+admin_for_agent_scope = false
+agents = ["pibot"]
+channel = "telegram.default"
+external_peers = ["__TELEGRAM_USER_ID__"]
+ignore = []
+output_modality = "mirror"
+
+[agents.pibot.workspace.access]
+
+[channels.telegram.default]
+api_base_url = "https://api.telegram.org"
+approval_timeout_secs = 120
+bot_token = "__TELEGRAM_BOT_TOKEN__"
+draft_update_interval_ms = 1000
+enabled = true
+interrupt_on_new_message = false
+mention_only = false
+reply_min_interval_secs = 0
+reply_queue_depth_max = 0
+stream_mode = "off"
+excluded_tools = []
+
+[providers.models]
+
+[providers.models.custom.agy]
+uri = "http://127.0.0.1:8088/v1"
+model = "agy-gemini-medium"
+wire_api = "chat_completions"
+context_window = 128000
+timeout_secs = 600
+
+[agents]
+
+[agents.pibot]
+risk_profile = "yolo"
+model_provider = "custom.agy"
+runtime_profile = "lean"
+acp_enable_mcp = false
+channels = ["telegram.default"]
+classifier_provider = ""
+cron_jobs = []
+delegate_same_risk_profile = true
+delegates = []
+enabled = true
+knowledge_bundles = []
+mcp_bundles = []
+skill_bundles = []
+summary_provider = ""
+transcription_provider = ""
+tts_provider = ""
+allowed_tools = [
+  "shell",
+  "file_read",
+  "file_write",
+  "memory_store",
+  "memory_recall",
+  "memory_forget"
+]
+
+[runtime_profiles]
+
+[runtime_profiles.unbounded]
+agentic = true
+agentic_timeout_secs = 1800
+compact_context = false
+delegation_timeout_secs = 900
+keep_tool_context_turns = 2
+max_actions_per_hour = 4294967295
+max_context_tokens = 128000
+max_cost_per_day_cents = 4294967295
+max_delegation_depth = 8
+max_history_messages = 30
+max_system_prompt_chars = 64000
+max_tool_iterations = 100
+max_tool_result_chars = 16000
+memory_recall_limit = 5
+parallel_tools = true
+shell_timeout_secs = 600
+strict_tool_parsing = false
+tool_call_dedup_exempt = []
+tool_filter_groups = []
+
+[runtime_profiles.lean]
+agentic = true
+agentic_timeout_secs = 1800
+compact_context = false
+delegation_timeout_secs = 900
+keep_tool_context_turns = 2
+max_actions_per_hour = 4294967295
+max_context_tokens = 64000
+max_cost_per_day_cents = 4294967295
+max_delegation_depth = 2
+max_history_messages = 20
+max_system_prompt_chars = 24000
+max_tool_iterations = 40
+max_tool_result_chars = 16000
+memory_recall_limit = 5
+parallel_tools = true
+shell_timeout_secs = 600
+strict_tool_parsing = false
+tool_call_dedup_exempt = []
+tool_filter_groups = []
+
+[runtime_profiles.lean.thinking]
+default_level = "low"
+display = "off"
+native_thinking = false
+
+[risk_profiles.yolo]
+allowed_commands = ["*"]
+allowed_roots = ["__WORKSPACE_ROOT__"]
+auto_approve = ["*"]
+block_high_risk_commands = false
+level = "full"
+require_approval_for_medium_risk = false
+sandbox_enabled = false
+workspace_only = false
+always_ask = []
+excluded_tools = []
+firejail_args = []
+forbidden_paths = ["/etc", "/root", "/home", "/usr", "/bin", "/sbin", "/lib", "/opt", "/boot", "/dev", "/proc", "/sys", "/var", "/tmp", "~/.ssh", "~/.gnupg", "~/.aws", "~/.config"]
+shell_env_passthrough = []
+allowed_tools = [
+  "shell",
+  "file_read",
+  "file_write",
+  "memory_store",
+  "memory_recall",
+  "memory_forget"
+]
+
+[runtime_profiles.unbounded.context_compression]
+enabled = false
+identifier_policy = "strict"
+max_passes = 3
+protect_first_n = 3
+protect_last_n = 4
+source_max_chars = 50000
+summary_max_chars = 4000
+threshold_ratio = 0.5
+timeout_secs = 60
+tool_result_retrim_chars = 2000
+summary_provider = ""
+tool_result_trim_exempt = []
+
+[risk_profiles.yolo.delegation_policy]
+mode = "allow"
+
+[channels]
+
+[channels.telegram]
+
+[runtime_profiles.unbounded.eval]
+enabled = false
+max_retries = 1
+min_quality_score = 0.5
+
+[runtime_profiles.unbounded.history_pruning]
+collapse_tool_results = true
+enabled = false
+keep_recent = 4
+max_tokens = 8192
+
+[runtime_profiles.unbounded.thinking]
+default_level = "low"
+display = "off"
+native_thinking = false
+
+[runtime_profiles.unbounded.tool_receipts]
+enabled = false
+inject_system_prompt = true
+show_in_response = false
+
+[memory]
+backend = "sqlite.sqlite"
+search_mode = "bm25"
+auto_save = false
+
+[onboard_state]
+quickstart_completed = true
+
+[risk_profiles]
