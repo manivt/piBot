@@ -31,10 +31,18 @@ else
   fail
 fi
 
-echo -n "[*] 2. Checking agy is signed in... "
-AGY_MODELS="$(timeout 60 agy models </dev/null 2>&1)"
+echo -n "[*] 2. Checking agy is signed in (up to 60s)... "
+# Write to a file rather than using $(...): agy can leave helper processes
+# holding stdout open, which would make a command substitution wait forever.
+AGY_MODELS_FILE="$(mktemp)"
+timeout -k 5 60 agy models </dev/null >"${AGY_MODELS_FILE}" 2>&1
+AGY_RC=$?
+AGY_MODELS="$(cat "${AGY_MODELS_FILE}")"
+rm -f "${AGY_MODELS_FILE}"
 if [[ "${AGY_MODELS}" == *"sign in"* ]]; then
   fail "run 'agy' once and complete the Google sign-in"
+elif [[ "${AGY_RC}" -eq 124 || "${AGY_RC}" -eq 137 ]]; then
+  fail "'agy models' did not finish within 60s"
 elif [[ -z "${AGY_MODELS}" ]]; then
   fail "no output from 'agy models'"
 else
