@@ -19,13 +19,17 @@
 
 ## Swap Configuration (Essential for 1 GB Boards)
 
-If running on a 1 GB board (like the Pi 3B+), ensure a 1 GB swapfile is configured to prevent memory pressure during binary builds or compilation:
+If running on a 1 GB board (like the Pi 3B+), make sure roughly 1 GB of swap is available to prevent memory pressure while building `agy-shim`:
 
 ```bash
-# Check current swap
 free -h
+```
 
-# If swap is small (< 1 GB), adjust dphys-swapfile on Raspberry Pi OS:
+If the `Swap` line already shows about 900 MB or more, you're done — recent Raspberry Pi OS releases set this up automatically (often as compressed RAM swap; `swapon --show` tells you which).
+
+Only on older images that still use `dphys-swapfile` (check with `which dphys-swapfile`) and show less than 1 GB of swap:
+
+```bash
 sudo dphys-swapfile swapoff
 sudo sed -i 's/^CONF_SWAPSIZE=.*/CONF_SWAPSIZE=1024/' /etc/dphys-swapfile
 sudo dphys-swapfile setup
