@@ -31,32 +31,8 @@ else
   fail
 fi
 
-echo -n "[*] 2. Checking agy answers a test prompt (up to 90s)... "
-# Use print mode (-p), exactly like agy-shim does. Other subcommands such as
-# `agy models` can open an interactive picker on the terminal and never return.
-# Write to a file rather than using $(...): agy can leave helper processes
-# holding stdout open, which would make a command substitution wait forever.
-AGY_OUT_FILE="$(mktemp)"
-(
-  cd "${WORKSPACE_ROOT:-${HOME}/workspaces}" 2>/dev/null || cd "${HOME}"
-  timeout -k 5 90 agy -p "Reply with exactly: OK" --output-format json </dev/null >"${AGY_OUT_FILE}" 2>&1
-)
-AGY_RC=$?
-AGY_STATUS="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("status",""))' "${AGY_OUT_FILE}" 2>/dev/null)"
-AGY_OUT="$(cat "${AGY_OUT_FILE}")"
-rm -f "${AGY_OUT_FILE}"
-if [[ "${AGY_OUT}" == *"Authentication required"* || "${AGY_OUT}" == *"sign in"* ]]; then
-  fail "not signed in: run 'agy' once and complete the Google sign-in"
-elif [[ "${AGY_RC}" -eq 124 || "${AGY_RC}" -eq 137 ]]; then
-  fail "agy did not answer within 90s"
-elif [[ "${AGY_STATUS^^}" == "SUCCESS" ]]; then
-  echo "OK"
-else
-  fail "unexpected agy result: $(head -c 200 <<< "${AGY_OUT}")"
-fi
-
-# 3. Check agy-shim HTTP health and auth
-echo -n "[*] 3. Checking agy-shim health endpoint (${SHIM_URL}/health)... "
+# 2. Check agy-shim HTTP health and auth
+echo -n "[*] 2. Checking agy-shim health endpoint (${SHIM_URL}/health)... "
 HEALTH_RESP=$(curl -s --max-time 3 "${SHIM_URL}/health" || true)
 if [[ "${HEALTH_RESP}" == *"status"*"ok"* ]]; then
   echo "OK (${HEALTH_RESP})"
@@ -64,7 +40,7 @@ else
   fail "${HEALTH_RESP:-No response}"
 fi
 
-echo -n "[*] 4. Checking agy-shim rejects unauthenticated requests... "
+echo -n "[*] 3. Checking agy-shim rejects unauthenticated requests... "
 UNAUTH_CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 -X POST \
   -H 'Content-Type: application/json' -d '{"messages":[{"role":"user","content":"ping"}]}' \
   "${SHIM_URL}/v1/chat/completions" || true)
@@ -72,6 +48,33 @@ if [[ "${UNAUTH_CODE}" == "401" ]]; then
   echo "OK (401)"
 else
   fail "expected 401, got ${UNAUTH_CODE:-no response}"
+fi
+
+# 4. End-to-end: send a tiny prompt through agy-shim, the same path a Telegram
+# message takes. This checks the shim token, agy, your Google sign-in and the
+# model name together. (Running `agy` directly from a terminal is not a good
+# test: with a terminal attached it may wait for interactive input.)
+echo -n "[*] 4. Checking a test prompt through agy-shim -> agy (up to 120s)... "
+SHIM_TOKEN="$(sed -n 's/^AGY_SHIM_TOKEN=//p' "${SHIM_ENV_FILE}" 2>/dev/null)"
+if [[ -z "${SHIM_TOKEN}" ]]; then
+  fail "no token in ${SHIM_ENV_FILE}; run ./scripts/setup.sh"
+else
+  E2E_DIR="$(mktemp -d)"
+  # Pass the token via a private header file so it never shows up in `ps`
+  (umask 077 && printf 'Authorization: Bearer %s\n' "${SHIM_TOKEN}" > "${E2E_DIR}/auth")
+  E2E_CODE=$(curl -s -o "${E2E_DIR}/body" -w '%{http_code}' --max-time 120 -X POST \
+    -H @"${E2E_DIR}/auth" -H 'Content-Type: application/json' \
+    -d '{"model":"agy-gemini-medium","messages":[{"role":"user","content":"Reply with exactly: OK"}]}' \
+    "${SHIM_URL}/v1/chat/completions" || true)
+  E2E_REPLY="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["choices"][0]["message"]["content"].strip()[:40])' "${E2E_DIR}/body" 2>/dev/null)"
+  rm -rf "${E2E_DIR}"
+  if [[ "${E2E_CODE}" == "200" && -n "${E2E_REPLY}" ]]; then
+    echo "OK (agy replied: ${E2E_REPLY})"
+  elif [[ "${E2E_CODE}" == "000" ]]; then
+    fail "no answer within 120s. Is agy signed in? Run 'agy' once to sign in. Details: sudo journalctl -u agy-shim -n 20"
+  else
+    fail "agy-shim returned HTTP ${E2E_CODE}. Is agy signed in? Run 'agy' once to sign in. Details: sudo journalctl -u agy-shim -n 20"
+  fi
 fi
 
 # 5. Check systemd services
