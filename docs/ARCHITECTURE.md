@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="../piBot_logo.png" alt="piBot Logo" width="120">
+</p>
+
 # piBot Architecture
 
 `piBot` is designed around a single core insight: **low-power edge hardware (like a Raspberry Pi) makes a fantastic local orchestrator, but a poor LLM host.**

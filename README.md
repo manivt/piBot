@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="piBot_logo.png" alt="piBot Logo" width="180">
+</p>
+
 # piBot 🥧🤖
 
 > **Autonomous "Bot in a Pi" Framework:** Run your own personal AI assistant 24/7 on a Raspberry Pi using ZeroClaw and Google Antigravity CLI (`agy`).
@@ -70,7 +74,7 @@ agy auth login
 Follow the terminal prompt to open the URL in your browser and complete authentication.
 
 ### 4. Configure Your Bot & Telegram Secrets
-1. **Create a Telegram Bot:** Message [@BotFather](https://t.me/BotFather) on Telegram, run `/newbot`, and copy your bot token.
+1. **Create a Telegram Bot:** Message [@BotFather](https://t.me/BotFather) on Telegram, run `/newbot`, and copy your bot token. *(Optional: Use `/setuserpic` in BotFather and upload `piBot_logo.png` to set your bot's icon).*
 2. **Find Your Numeric Telegram ID:** Message [@userinfobot](https://t.me/userinfobot) to get your numeric user ID.
 3. **Configure `.env`:**
    ```bash

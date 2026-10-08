@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="../piBot_logo.png" alt="piBot Logo" width="120">
+</p>
+
 # piBot: Docker Deployment Guide
 
 This directory provides an optional containerized deployment for `piBot`.
