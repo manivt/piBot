@@ -6,6 +6,9 @@
 
 > **Autonomous "Bot in a Pi" Framework:** Run your own personal AI assistant 24/7 on a Raspberry Pi using ZeroClaw and Google Antigravity CLI (`agy`).
 
+> [!WARNING]
+> **Use at your own risk.** piBot is a hobby project, provided as-is with no support. It runs autonomously with shell access on your Pi and sends what it sees to Google. Read the **Security Model** section below before installing.
+
 ---
 
 ## What is piBot?
