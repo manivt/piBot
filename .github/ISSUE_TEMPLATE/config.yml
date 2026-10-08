@@ -1,8 +1,0 @@
-blank_issues_enabled: false
-contact_links:
-  - name: Questions and ideas
-    url: https://github.com/manivt/piBot/discussions
-    about: Ask how to do something or share what you've built with piBot.
-  - name: Report a security vulnerability
-    url: https://github.com/manivt/piBot/security/advisories/new
-    about: Please report security problems privately, not as a public issue.
