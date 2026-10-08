@@ -1,4 +1,2 @@
-# HEARTBEAT.md — Scheduled Background Routine Checks
-
-# Define periodic proactive checks or maintenance routines here if desired.
-# Format: Markdown notes or cron tasks monitored by ZeroClaw.
+# HEARTBEAT.md
+# Optional: list periodic checks or maintenance routines for ZeroClaw to run.
