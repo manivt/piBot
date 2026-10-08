@@ -1,0 +1,15 @@
+name: Feature request
+description: Suggest an improvement or a new capability for piBot
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like piBot to do?
+      description: Describe the problem or use case first, then your idea for solving it.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Anything you've tried or considered?

@@ -2,6 +2,12 @@
 
 piBot is an autonomous agent: it runs shell commands and edits files on the Pi without asking first. This page explains the safeguards that ship with it and how to change them for your setup. Start with the **Security Model** section of the [README](../README.md).
 
+## Reporting a vulnerability
+
+Please **don't open a public issue** for security problems. Report them privately through GitHub instead: on the repository page go to **Security → Report a vulnerability** (or open [this link](https://github.com/manivt/piBot/security/advisories/new)). Include what you found, how to reproduce it, and what an attacker could do with it.
+
+This is a hobby project maintained in spare time, so there's no guaranteed response time, but reports are taken seriously and fixes are credited if you'd like.
+
 ---
 
 ## Local network protection

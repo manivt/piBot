@@ -1,0 +1,50 @@
+name: Bug report
+description: Something in the install, setup or bot doesn't work as the README says
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for trying piBot! Please **remove anything private before posting**: bot tokens, Telegram user IDs, your name or username, IP addresses, and the contents of your messages to the bot.
+
+        Found a security problem? Please don't open a public issue — use **Security → Report a vulnerability** instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: dropdown
+    id: step
+    attributes:
+      label: Where did it go wrong?
+      options:
+        - Flashing / connecting to the Pi
+        - install-prereqs.sh
+        - Signing in to agy
+        - setup.sh
+        - verify.sh
+        - The bot on Telegram
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: verify
+    attributes:
+      label: Output of ./scripts/verify.sh
+      description: Paste the full output (it contains no secrets, but double-check).
+      render: shell
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log lines (optional)
+      description: e.g. `sudo journalctl -u agy-shim -n 30` — remove message contents first.
+      render: shell
+  - type: input
+    id: hardware
+    attributes:
+      label: Hardware and OS
+      placeholder: e.g. Raspberry Pi 3B+, Raspberry Pi OS Lite 64-bit (Trixie)
+    validations:
+      required: true
