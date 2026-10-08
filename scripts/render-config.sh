@@ -3,7 +3,7 @@
 # scripts/render-config.sh
 # Safely renders ~/.zeroclaw/config.toml from the template.
 # Values come from the .env file if it exists, otherwise from the environment
-# (the Docker entrypoint uses the latter).
+# (useful for automation).
 # Note: ZeroClaw enforces 0600 permissions on config.toml.
 # ==============================================================================
 

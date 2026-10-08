@@ -11,7 +11,7 @@ data/
 brain.db
 *.session
 
-# Bot output (Docker default workspace mount) and your personal persona overrides
+# Bot output kept inside the repo folder, and your personal persona overrides
 workspaces/
 agent/local/
 
