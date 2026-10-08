@@ -67,27 +67,52 @@ Run the automated installer to install Go, Python 3, ZeroClaw, and the Antigravi
 ```bash
 ./scripts/install-prereqs.sh
 ```
+It takes a few minutes on a Pi 3 and ends by printing the Go, Antigravity CLI and ZeroClaw versions.
+
+> **Don't worry about these messages.** Google's `agy` installer prints lines like `ERROR: logging before google.Init: I1008 ...` and a warning that `~/.local/bin` is not in your PATH. Both are harmless: the `I` means "info", and the PATH is fixed for you.
+
+Reload your shell so the new PATH takes effect (or log out and back in):
+```bash
+source ~/.bashrc
+```
 
 ### 3. Authenticate Antigravity CLI (`agy`)
 Authenticate with your Google account (works with both free Google accounts and Google AI Pro accounts). Start the CLI with no arguments:
 ```bash
 agy
 ```
-It prints a Google sign-in URL. Open it in a browser on any device (handy for a headless Pi over SSH), complete the sign-in, then exit the CLI. Your login is stored in `~/.gemini/` — treat that folder like a password.
+It prints a Google sign-in URL. Open it in a browser on any device (handy for a headless Pi over SSH), complete the sign-in, then exit the CLI. Your login is stored in `~/.gemini/` — treat that folder like a password, and consider using a separate Google account for the bot (see the Security Model section below).
 
 ### 4. Configure Your Bot & Telegram Secrets
-1. **Create a Telegram Bot:** Message [@BotFather](https://t.me/BotFather) on Telegram, run `/newbot`, and copy your bot token. *(Optional: Use `/setuserpic` in BotFather and upload `piBot_logo.png` to set your bot's icon).*
-2. **Find Your Numeric Telegram ID:** Message [@userinfobot](https://t.me/userinfobot) to get your numeric user ID.
-3. **Configure `.env`:**
-   ```bash
-   cp .env.example .env
-   nano .env
-   ```
-   Fill in your token and allowed user ID:
-   ```bash
-   TELEGRAM_BOT_TOKEN="123456789:ABCdefGHIjklMNOpqrSTUvwxYZ"
-   TELEGRAM_ALLOWED_USERS="987654321"
-   ```
+
+**a) Create your Telegram bot and get its token**
+1. In Telegram, open a chat with [@BotFather](https://t.me/BotFather) (Telegram's official bot for creating bots — check for the blue verified tick).
+2. Send `/newbot`.
+3. Enter a **display name** for your bot (anything, e.g. `piBot`).
+4. Enter a **username** — it must be unique and end in `bot` (e.g. `my_home_pibot`).
+5. BotFather replies with a **token** that looks like `123456789:ABCdefGHIjklMNOpqrSTUvwxYZ`. Copy it. Anyone with this token can control your bot, so keep it private. If it ever leaks, send `/revoke` to BotFather to get a new one.
+6. *(Optional)* Send `/setuserpic`, pick your bot, and upload `piBot_logo.png` to give it the piBot icon.
+
+**b) Find your numeric Telegram user ID**
+Open a chat with [@userinfobot](https://t.me/userinfobot) and send any message. It replies with your **Id** — a number like `987654321`. This is how piBot knows to answer you and ignore everyone else.
+
+**c) Put both values into `.env`**
+Create your private settings file from the template and open it in the `nano` editor:
+```bash
+cp .env.example .env
+nano .env
+```
+Find these two lines and fill them in (keep the quotes, no spaces around `=`):
+```bash
+TELEGRAM_BOT_TOKEN="123456789:ABCdefGHIjklMNOpqrSTUvwxYZ"
+TELEGRAM_ALLOWED_USERS="987654321"
+```
+- To allow more than one person, separate their IDs with commas: `"987654321,123123123"`.
+- Leave the other settings as they are unless you know you need to change them.
+
+Save and exit nano: press **Ctrl+O**, then **Enter** to save, then **Ctrl+X** to exit.
+
+`.env` is git-ignored, so it is never committed, and `setup.sh` makes it readable only by you. If you change it later, rerun `./scripts/setup.sh` to apply the change.
 
 ### 5. Run the Automated Setup
 ```bash
