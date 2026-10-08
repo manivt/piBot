@@ -19,6 +19,21 @@
 - 🔒 **Zero Inbound Open Ports:** Communicates with Telegram via outbound HTTPS long-polling. No port forwarding, no static IP, and no dynamic DNS required.
 - 🛡️ **Strict Allowlist Security:** Only Telegram user IDs explicitly listed in your `.env` configuration can interact with the bot. Messages from all other senders are silently ignored.
 
+### See It in Action
+
+One Telegram message asking for a pizzeria website with checkout. piBot designed and built it in its workspace, then served it on the Pi so it could be opened from a laptop on the same network.
+
+<table>
+  <tr>
+    <th width="50%">You ask on Telegram</th>
+    <th width="50%">piBot builds and hosts it</th>
+  </tr>
+  <tr>
+    <td valign="top"><img src="docs/telegram_interaction.jpg" alt="Telegram chat: the user asks piBot to build and host a snazzy Mamma Mia pizzeria webpage with checkout; piBot replies with what it built" width="100%"></td>
+    <td valign="top"><img src="docs/generated_webpage.jpg" alt="The generated Mamma Mia pizzeria webpage open at http://pibot.local:8080, showing exotic pizza slices with prices and Add buttons" width="100%"></td>
+  </tr>
+</table>
+
 ---
 
 ## Architecture Overview
