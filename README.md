@@ -61,9 +61,9 @@ Google Cloud AI Models (Gemini 3.8 Flash, Medium, etc.)
 
 ## Hardware Requirements
 
-- **Supported Boards:** Raspberry Pi 3 Model B+, Raspberry Pi 4, Raspberry Pi 5, or any Debian/Ubuntu ARM64/x86_64 host.
+- **Tested on:** Raspberry Pi 3 Model B+. The Raspberry Pi 4 and 5 should work too (same 64-bit OS, more RAM) but haven't been tested yet; the same goes for other 64-bit Debian-based ARM64/x86_64 machines.
 - **RAM:** Minimum 1 GB RAM (with a 1 GB swapfile recommended).
-- **OS:** Debian GNU/Linux 12/13 (ARM64) or Raspberry Pi OS (64-bit).
+- **OS:** Raspberry Pi OS Lite (64-bit), based on Debian 13 "Trixie" (tested). Other 64-bit Debian-based systems should work but are untested.
 
 For hardware notes and swap setup, see **[docs/HARDWARE.md](docs/HARDWARE.md)**.  
 For deep architecture and flow details, see **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.  
