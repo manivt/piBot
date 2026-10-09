@@ -193,8 +193,9 @@ Save and exit nano: press **Ctrl+O**, then **Enter** to save, then **Ctrl+X** to
 This script will:
 - Compile the lightweight `agy-shim` Go binary.
 - Generate a random secret so only ZeroClaw can use `agy-shim` (stored in `~/.config/pibot/agy-shim.env`, mode `0600`).
-- Deploy your agent's persona prompt files into `~/.zeroclaw/agents/pibot/workspace/`.
+- Deploy your agent's persona prompt files into `~/.zeroclaw/agents/pibot/workspace/`, applying any personal overrides from `agent/local/` and your `BOT_NAME`.
 - Safely generate the hardened ZeroClaw `config.toml` (mode `0600`).
+- Install the LAN guard firewall that keeps the bot away from other devices on your network (unless `LAN_GUARD=off`).
 - Install and start the `agy-shim` (system) and `zeroclaw` (user) systemd services, and enable start-at-boot.
 
 It is safe to re-run at any time (e.g. after editing `.env` or persona files).
