@@ -41,9 +41,10 @@ echo "[+] All required tools found."
 
 APPLIANCE_USER="${APPLIANCE_USER:-${USER}}"
 WORKSPACE_ROOT="${WORKSPACE_ROOT:-${HOME}/workspaces}"
-AGENT_NAME="${AGENT_NAME:-pibot}"
 AGY_SHIM_PORT="${AGY_SHIM_PORT:-8088}"
-AGENT_WORKSPACE="${HOME}/.zeroclaw/agents/${AGENT_NAME}/workspace"
+# Must match the agent ID in config/zeroclaw/config.toml.template ([agents.pibot]).
+# To rename the bot, use BOT_NAME instead.
+AGENT_WORKSPACE="${HOME}/.zeroclaw/agents/pibot/workspace"
 SHIM_ENV_FILE="${HOME}/.config/pibot/agy-shim.env"
 
 # Step 2: Ensure workspace directories exist
