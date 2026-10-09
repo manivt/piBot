@@ -18,7 +18,7 @@
 ### Why piBot?
 - ⚡ **Lightweight Edge Orchestration:** Local LLMs on a Pi are notoriously slow and memory-hungry. Instead, piBot runs a featherweight local daemon (~50 MB RAM) to manage chat channels, execute safe local tools, and maintain persistent SQLite memory.
 - 🧠 **Cloud-Backed Intelligence:** Natural language reasoning, coding, analysis, and planning are handled upstream via Google Antigravity CLI (`agy`).
-- 🆓 **Works with Free Google Accounts:** You **do not** need a paid AI Pro or Ultra subscription. Any standard Google account can authenticate `agy` and use Gemini models for free under standard quotas. (Paid plans simply provide higher quotas and rate limits).
+- 🆓 **Works with Free Google Accounts:** You **do not** need a paid AI Pro or Ultra subscription. Any standard Google account can sign in to `agy` and use Gemini models for free, within a weekly usage quota. (Paid plans raise the quota and refresh it more often.) Use is subject to [Google's Antigravity terms](https://antigravity.google/terms/) — see [References](#references).
 - 🔒 **Zero Inbound Open Ports:** Communicates with Telegram via outbound HTTPS long-polling. No port forwarding, no static IP, and no dynamic DNS required.
 - 🛡️ **Strict Allowlist Security:** Only Telegram user IDs explicitly listed in your `.env` configuration can interact with the bot. Messages from all other senders are silently ignored.
 
@@ -178,7 +178,7 @@ Find these two lines and fill them in (keep the quotes, no spaces around `=`):
 TELEGRAM_BOT_TOKEN="123456789:ABCdefGHIjklMNOpqrSTUvwxYZ"
 TELEGRAM_ALLOWED_USERS="987654321"
 ```
-- To allow more than one person, separate their IDs with commas: `"987654321,123123123"`.
+- **List only yourself.** Everyone you allow is effectively using *your* Google account through `agy`, and a reply on Google's developer forum says this kind of automated `agy` use should run strictly for you as an individual ([References](#references)). If someone else wants a piBot, they should run their own with their own Google account. (Technically, several IDs can be listed separated by commas, e.g. `"987654321,123123123"`, but that's at your own risk.)
 - *(Optional)* Named your bot something else in BotFather? Set `BOT_NAME` to that name (e.g. `BOT_NAME="Vayu"`) so the bot introduces itself by it. It defaults to `piBot`.
 - Leave the other settings as they are unless you know you need to change them.
 
@@ -215,12 +215,14 @@ piBot is an **autonomous agent with full control of the account it runs as**. It
 - **Anyone who controls your Telegram account controls the Pi.** Turn on Telegram two-step verification and keep `TELEGRAM_ALLOWED_USERS` to yourself.
 - **Prompt injection is a real risk.** If you ask the bot to read a web page, email, or file, text hidden in it can try to hijack the bot. The persona tells it to treat such content as data, but that is not a guarantee.
 - **The bot can read everything its user can,** including your Google login in `~/.gemini/` and the bot token in `.env`.
-- **Whatever the bot sees is sent to Google** as part of its requests: your messages, files it reads, and command output. Keep passwords, financial documents and other people's private data away from it.
+- **Whatever the bot sees is sent to Google** as part of its requests: your messages, files it reads, and command output. Under [Google's Antigravity terms](https://antigravity.google/terms/), this data is recorded, **may be reviewed by Google employees and contractors, and is used to improve Google's products and machine-learning models**. Keep passwords, financial documents and other people's private data away from it.
+- **You are responsible for what the bot does.** The same terms make you *"solely responsible for … the actions and tasks performed by an AI Agent."*
+- **Only connect piBot to `agy` the way it ships.** The terms forbid using third-party tools to access Antigravity with its sign-in (e.g. reusing its OAuth login). piBot instead runs the unmodified official `agy` program, keeping the login inside it, which a reply on Google's developer forum describes as an intended use case for individual users (see [References](#references)). Don't modify it to call Google's services directly.
 
 Recommended:
 - Use a **dedicated Pi and a dedicated Linux user** for piBot, with nothing else of value on it.
 - **Do not give that user passwordless sudo** (Raspberry Pi OS grants it to the first user by default — create a separate user, or remove `/etc/sudoers.d/010_pi-nopasswd` once setup is done). Setup itself only needs sudo while you run it. Without sudo the bot also can't switch off the LAN guard below.
-- Consider using a **separate Google account** for `agy`.
+- Consider using a **separate Google account** for `agy`. Some users report accounts being suspended for "violation of Terms of Service" even when using only Google's official tools, so keep piBot away from the Google account you rely on most.
 
 ### Local network protection (LAN guard)
 
@@ -294,6 +296,24 @@ sudo journalctl -u agy-shim --since today | grep -o 'total_tokens=[0-9]*' | cut 
 Expect roughly **15–20k tokens per message**, even for a short "hi": `agy` adds about 12k tokens of its own instructions, and piBot's own instructions, tool descriptions and persona files (`agent/workspace/*.md`) add a few thousand more. Trimming those files lowers the cost of every message. When the quota runs out, the bot stops replying and the agy-shim log shows `agy_process_error` or `agy_non_success` until it resets.
 
 > **Tip:** the first time you open your bot in Telegram, tapping **Start** sends `/start` as a message, so you'll see one extra request in the logs. That's expected.
+
+---
+
+## References
+
+**Google Antigravity (`agy`) — terms and guidance**
+- [Google Antigravity Additional Terms of Service](https://antigravity.google/terms/): third-party tools (§6), how your data is used (§3, §5), and your responsibility for the agent's actions (§4).
+- [Google Privacy Policy](https://policies.google.com/privacy)
+- [Google developer forum: is automatically launching the official `agy` CLI from a local orchestrator allowed?](https://discuss.ai.google.dev/t/is-automatically-launching-the-official-agy-cli-from-a-local-ai-orchestrator-allowed-under-additional-terms-6/186954): a reply (5 October 2026) describes running the unmodified `agy` locally, with the login kept inside it, as an intended use case for individual users, including the free tier. The reply isn't marked as an official Google statement.
+- [Google developer forum: example "violation of Terms of Service" account suspension appeal](https://discuss.ai.google.dev/t/appeal-request-agy-antigravity-cli-service-disabled-for-violation-of-terms-of-service-code-403/172603)
+
+**Software piBot builds on**
+- [Antigravity CLI (`agy`)](https://github.com/google-antigravity/antigravity-cli)
+- [ZeroClaw](https://github.com/zeroclaw-labs/zeroclaw)
+- [Raspberry Pi Imager](https://www.raspberrypi.com/software/)
+- [Telegram @BotFather](https://t.me/BotFather) and [@userinfobot](https://t.me/userinfobot)
+
+Terms and policies change; check the current versions before relying on them.
 
 ---
 
