@@ -89,6 +89,17 @@ if compgen -G "${REPO_ROOT}/agent/local/*.md" > /dev/null; then
   cp "${REPO_ROOT}/agent/local/"*.md "${AGENT_WORKSPACE}/"
   echo "[+] Applied personal overrides from agent/local/."
 fi
+# The persona files say "piBot"; BOT_NAME lets the bot use the name you gave it
+# in BotFather instead. Only the deployed copies are changed, not the repo.
+BOT_NAME="${BOT_NAME:-piBot}"
+if [[ ! "${BOT_NAME}" =~ ^[A-Za-z0-9][A-Za-z0-9\ ._\'-]{0,39}$ ]]; then
+  echo "[-] Error: BOT_NAME '${BOT_NAME}' is not valid. Use up to 40 letters, digits, spaces, . _ - or '."
+  exit 1
+fi
+if [[ "${BOT_NAME}" != "piBot" ]]; then
+  sed -i "s/piBot/${BOT_NAME}/g" "${AGENT_WORKSPACE}/"*.md
+  echo "[+] Bot will introduce itself as '${BOT_NAME}'."
+fi
 echo "[+] Workspace files deployed to ${AGENT_WORKSPACE}/"
 
 # Step 6: Render ZeroClaw configuration

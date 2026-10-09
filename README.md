@@ -179,6 +179,7 @@ TELEGRAM_BOT_TOKEN="123456789:ABCdefGHIjklMNOpqrSTUvwxYZ"
 TELEGRAM_ALLOWED_USERS="987654321"
 ```
 - To allow more than one person, separate their IDs with commas: `"987654321,123123123"`.
+- *(Optional)* Named your bot something else in BotFather? Set `BOT_NAME` to that name (e.g. `BOT_NAME="Vayu"`) so the bot introduces itself by it. It defaults to `piBot`.
 - Leave the other settings as they are unless you know you need to change them.
 
 Save and exit nano: press **Ctrl+O**, then **Enter** to save, then **Ctrl+X** to exit.
@@ -237,6 +238,8 @@ Step-by-step instructions, and what each choice means for safety, are in **[docs
 ---
 
 ## Customizing Your Bot's Persona
+
+**Just want a different name?** Set `BOT_NAME` in `.env` (e.g. `BOT_NAME="Vayu"`, matching your BotFather name) and rerun `./scripts/setup.sh`. The bot will call itself that instead of piBot; no file editing needed.
 
 All personality and behavioral instructions are stored as plain Markdown files in `agent/workspace/`:
 
